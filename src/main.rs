@@ -25,6 +25,29 @@ struct CLIArguments {
     help: bool,
 }
 
+//ChatGPT:
+fn sort_hashmap_by_key(map: &mut HashMap<usize, i32>) -> Vec<(usize, i32)> {
+    let mut sorted_map: Vec<(usize, i32)> = map.iter().map(|(&k, &v)| (k, v)).collect();
+    sorted_map.sort_by_key(|&x| x.0);
+    sorted_map
+}
+
+//ChatGPT: return the scoring of each candidate -- https://en.wikipedia.org/wiki/Borda_count#Ballot
+fn borda_count_scores(choices: &Vec<String>, votes: &Vec<Ballot>) -> Vec<usize> {
+    let num_choices = choices.len();
+    let mut scores = vec![0; num_choices];
+
+    for vote in votes {
+        for (i, candidate) in vote.choices.iter().enumerate() {
+            if let Some(index) = vote.choices.iter().position(|c| c == candidate) {
+                scores[index] += num_choices - i - 1;
+            }
+        }
+    }
+
+    scores
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     println!("CSV-powered Rustlang Analyzer for Ballots (CRAB)");
     println!("================================================");
@@ -40,6 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let file = File::open(args.input_file.unwrap_or_else(|| "votes.csv".to_string()))?;
     let reader = BufReader::new(file);
     let mut ballots = Vec::new();
+    let mut total_choices_in_all_ballots = 0;
     let mut discovered_choices = Vec::new();
 
     let top_to_bottom_list_limit = 0; //Top 20
@@ -67,6 +91,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             if c == ',' {
                 if !read_choice.is_empty() {
                     read_in_ballot.choices.push(read_choice.clone());
+                    total_choices_in_all_ballots += 1;
 
                     if !discovered_choices.contains(&read_choice) {
                         discovered_choices.push(read_choice.clone());
@@ -80,6 +105,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
             if c == line.chars().last().unwrap() && !read_choice.is_empty() {
                 read_in_ballot.choices.push(read_choice.clone());
+                total_choices_in_all_ballots += 1;
 
                 if !discovered_choices.contains(&read_choice) {
                     discovered_choices.push(read_choice.clone());
@@ -238,20 +264,94 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("[CRAB] Winner List (1st to nth): {:?}", top_to_bottom_list);
 
 
-    // //EXPERIMENTAL
-    // //Analysis of ballots -- for each choice, count the votes by ranking
-    // let mut ballots_analysis = HashMap::new();
-    // for ballot in &ballots {
-    //     for choice in &ballot.choices {
-    //         let count = ballots_analysis.entry(choice.clone()).or_insert(0);
-    //         *count += 1;
-    //     }
-    // }
-    
-    // if args.verbose {
-    //     println!("[CRAB] [DEBUG] Total Ballots Analysis: {:?}", ballots_analysis);
-    // }
+    // ---------------------------------------------------------------------------
+    // //EXPERIMENTAL -- Vote counts, Stats, and Bordas---
 
+    let hard_coded_value = discovered_choices[0].clone();
+    // Count all the first, second, third, etc. choices for hard_coded_value, return to println
+    //use map of Position (int), Count (int)
+    let mut position_count = HashMap::new();
+    for ballot in &ballots {
+        for (i, choice) in ballot.choices.iter().enumerate() {
+            if *choice == hard_coded_value {
+                let count = position_count.entry(i).or_insert(0);
+                *count += 1;
+            }
+        }
+    }
+
+    //check positon_count elements vs. discovered_choices elements -- add 0's if needed
+    for i in 0..discovered_choices.len() {
+        if !position_count.contains_key(&i) {
+            position_count.insert(i, 0);
+        }
+    }
+
+
+    if args.verbose {
+        //generate a "Statsitics Banner" for println
+        println!("============ Statsitics ============");
+        println!("[CRAB] [DEBUG] Total Ballots: {}", ballots.len());
+        println!("[CRAB] [DEBUG] Choices: {}", discovered_choices.len());
+        println!("[CRAB] [DEBUG] Total Choices in Ballots: {}", total_choices_in_all_ballots);
+
+
+        println!();
+        println!("------------ Borda Scoring ------------");
+
+        //Print Length of discovered_choices
+        println!("[CRAB] [BORDA] Length of discovered_choices: {}", discovered_choices.len());
+        let boarda_scores = borda_count_scores(&discovered_choices, &ballots);
+        println!("[CRAB] [BORDA] Ranking Score Value: {:?}", boarda_scores);
+
+        println!();
+        println!("------------ Vote Count ------------");
+        //     println!("[CRAB] [DEBUG] Total Ballots Analysis: {:?}", ballots_analysis);
+        // }
+
+        //sort by key
+        let sorted_map = sort_hashmap_by_key(&mut position_count);
+
+        // Blank String variable
+        let mut position_count_sorted = String::new();
+        let mut position_count_values = Vec::new();
+        for (key, value) in sorted_map {
+            //append to position_count_sorted
+            position_count_sorted.push_str(&format!("#{} @{} votes, ", key+1, value));
+            position_count_values.push(value as usize);
+        }
+        //remove last space & comma
+        position_count_sorted.pop();
+        position_count_sorted.pop();
+        println!("[CRAB] [VOTES] [{}] <{}>", hard_coded_value, position_count_sorted);
+        // println!("[CRAB] [DEBUG] Position Count: {:?}", position_count_sorted);
+
+        //(&ballots, discovered_choices.len());
+
+        println!();
+        println!("------------ Borda Scoring ------------");
+
+        //Sum Borda score, of position_count_sorted, for each choice
+        let mut total_borda_value = 0;
+        //debug
+        // println!("[CRAB] [DEBUG] position_count_values.len(): {}", position_count_values.len());
+        // println!("[CRAB] [DEBUG] boarda_scores.len(): {}", boarda_scores.len());
+        if position_count_values.len() == boarda_scores.len(){
+            //multiply  position_count_sorted[i] * boarda_scores[i] and add to total_borda_value
+            let calc_len = position_count_values.len();
+            //debug 
+            // println!("[CRAB] [DEBUG] calc_len: {}", calc_len);
+            for i in 0..(calc_len) {
+                //debug
+                // println!("[CRAB] [DEBUG] [{}] {} * {}", hard_coded_value, position_count_values[i], boarda_scores[i]);
+                total_borda_value += position_count_values[i] * boarda_scores[i];
+
+            }
+        }
+        println!("[CRAB] [BORDA] Total Borda Value: [{}] {}", hard_coded_value, total_borda_value);
+
+    }
+ 
 
     Ok(())
 }
