@@ -34,27 +34,25 @@ than two candidates.
 
 For example, suppose there are three candidates: A, B, and C, and three voters with the following
 preferences:
-
 Voter 1: A > B > C
 Voter 2: B > C > A
 Voter 3: C > A > B
-In Ranked Choice Borda, the candidates receive the following points:
 
+In Ranked Choice Borda, the candidates receive the following points:
 A: 5 (1st place from Voter 1 + 3rd place from Voter 3)
 B: 4 (2nd place from Voter 1 + 1st place from Voter 2)
 C: 3 (3rd place from Voter 1 + 2nd place from Voter 2)
+
 Therefore, A wins the election in Ranked Choice Borda.
 
 In RCV, the first round of vote-counting looks like this:
-
 A: 1 vote
 B: 1 vote
 C: 1 vote
 
-Since no candidate has a majority of the votes, the candidate with the least number of first-place
-votes (C) is eliminated. The votes for C are transferred to the remaining candidates based on the
-voters' second choices:
-
+Since no candidate has a majority of the votes, the candidate with the least number of
+first-place votes (C) is eliminated. The votes for C are transferred to the remaining candidates
+based on the voters' second choices:
 Voter 1: A > B > C (transferred to B)
 Voter 2: B > C > A (transferred to A)
 Voter 3: C > A > B (eliminated)
