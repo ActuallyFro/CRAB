@@ -32,15 +32,30 @@ fn sort_hashmap_by_key(map: &mut HashMap<usize, i32>) -> Vec<(usize, i32)> {
     sorted_map
 }
 
+//ChatGPT
+fn sort_hashmap_by_string_key(map: &mut HashMap<String, i32>) -> Vec<(String, i32)> {
+
+    let mut sorted_map_borda = Vec::new();
+    for (key, value) in map {
+        sorted_map_borda.push((key.clone(), *value));
+    }
+    sorted_map_borda.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted_map_borda
+
+    // let mut sorted_map: Vec<(String, i32)> = map.iter().map(|(k, v)| (k.clone(), *v)).collect();
+    // sorted_map.sort_by_key(|x| x.0.clone());
+    // sorted_map
+}
+
 //ChatGPT: return the scoring of each candidate -- https://en.wikipedia.org/wiki/Borda_count#Ballot
-fn borda_count_scores(choices: &Vec<String>, votes: &Vec<Ballot>) -> Vec<usize> {
+fn borda_count_scores(choices: &Vec<String>, votes: &Vec<Ballot>) -> Vec<i32> {
     let num_choices = choices.len();
     let mut scores = vec![0; num_choices];
 
     for vote in votes {
         for (i, candidate) in vote.choices.iter().enumerate() {
             if let Some(index) = vote.choices.iter().position(|c| c == candidate) {
-                scores[index] += num_choices - i - 1;
+                scores[index] += (num_choices - i - 1) as i32;
             }
         }
     }
@@ -56,6 +71,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     if args.help {
         CLIArguments::clap().print_help()?;
+        println!();
+        println!();
+        println!("[!WARNING!] The first column is skipped -- treated as ID [!WARNING!]");
         println!();
         return Ok(());
     }
@@ -321,7 +339,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         let mut position_count_values = Vec::new();
         for (_key, value) in sorted_map {
-            position_count_values.push(value as usize);
+            position_count_values.push(value);
         }
 
 
@@ -342,29 +360,44 @@ fn main() -> Result<(), Box<dyn Error>> {
     if args.verbose {
         println!();
         println!("------------ Vote Count ------------");            
+        let mut total_running_count = 0;
         for choice in &discovered_choices {
             let hard_coded_value = choice.clone();
             let sorted_map = choices_vote_counts.get(&hard_coded_value).unwrap();
 
             let mut position_count_sorted = String::new();
+            let mut running_count = 0;
             for (_key, value) in sorted_map {
                 position_count_sorted.push_str(&format!("{}, ", value));
+                running_count += value;
             }
+            total_running_count += running_count;
             position_count_sorted.pop();
             position_count_sorted.pop();
     
-
-            println!("[CRAB] [VOTES] [{}] <{}>", hard_coded_value, position_count_sorted);
+            println!("[CRAB] [VOTES] [{}] <{}> |{}|", hard_coded_value, position_count_sorted, running_count);
         }
+        println!("[CRAB] [VOTES] Total Vote Count: ||{}||", total_running_count);
 
         println!();
         println!("------------ Borda Scoring ------------");    
         for choice in &discovered_choices {
             let hard_coded_value = choice.clone();        
             let total_borda_value = choices_total_borda_count.get(&hard_coded_value).unwrap();
-            println!("[CRAB] [BORDA] Total Borda Value: [{}] {}", hard_coded_value, total_borda_value);
+            println!("[CRAB] [BORDA] Total Borda Value: [{}] {}", hard_coded_value, total_borda_value);            
         }
+
+
     }
+
+    println!();
+    println!("========= Sorted Borda Scoring =========");    
+    let sorted_map_borda = sort_hashmap_by_string_key(&mut choices_total_borda_count);
+    // println!("[CRAB] [BORDA] Ranking Score Value: {:?}", sorted_map_borda);
+    for (key, value) in sorted_map_borda {
+        println!("[CRAB] [BORDA] Total Borda Value: [{}] {}", key, value);            
+    }
+
 
 
     Ok(())

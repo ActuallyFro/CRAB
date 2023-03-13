@@ -1,5 +1,5 @@
-CSV-powered Rustlang Analyzer for Ballots
-=========================================
+CSV-powered Rustlang Analyzer for Ballots (v1.0.0)
+==================================================
 This app will dynamically load a CSV, compute Ranked Choice Voting, and provide simple stats.
 
 Short description of use
