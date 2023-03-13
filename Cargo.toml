@@ -1,7 +1,17 @@
 [package]
-name = "rank_choice_vote"
-version = "0.1.0"
+name = "CRAB"
+version = "1.0.1"
 edition = "2018"
 
 [dependencies]
 structopt = "0.3.24"
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+
+#[profile.web]
+#opt-level = "z"
+#inherits = "release"
